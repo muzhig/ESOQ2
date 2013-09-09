@@ -1,5 +1,6 @@
 #include <math.h>
 #include "ESOQ2.h"
+#include <string.h>
 
 void minimax(double* arr, int n, int& imin, int& imax) {
 	imax = imin = 0;
@@ -18,10 +19,11 @@ void esoq2(Matrix& obs, const Matrix& ref, double& loss, Matrix& quaternion) {
 	 * loss - output variable for loss metric
 	 * quaternion - output matrix for one column, 4D vector.
 	 * */
-
-	Matrix& B = obs.dotSelf(ref.transpose()); // 3xN * Nx3 = 3x3
-
 	double lam = obs.n; // number of observations
+	bool two_observations = obs.n == 2;
+
+	Matrix& B = obs.dotSelf(ref.transposed()); // 3xN * Nx3 = 3x3
+
 	double trB = B.trace();
 	double diag[] = {B(0,0), B(1,1), B(2,2), trB};
 
@@ -62,13 +64,13 @@ void esoq2(Matrix& obs, const Matrix& ref, double& loss, Matrix& quaternion) {
 			B(0, 1) - B(1, 0)
 	};
 	B.release(); // free memory
-	Matrix z(3, 1, z_);
+	Matrix z(1, 3, z_);//row
 
 	double z12 = z_[0] * z_[0];
 	double z22 = z_[1] * z_[1];
 	double z32 = z_[2] * z_[2];
 
-	bool two_observations = obs.n == 2;
+
 
 	if (two_observations) {
 		double lam0 = lam;
@@ -133,8 +135,8 @@ void esoq2(Matrix& obs, const Matrix& ref, double& loss, Matrix& quaternion) {
 		double n2_[] = {S12, (S22 - 2 * lam), S23};
 		double n3_[] = {S31, S23, (S33 - 2 * lam)};
 		Matrix m1(1,3,m1_);
-		Matrix m2(1,3,m1_);
-		Matrix m3(1,3,m1_);
+		Matrix m2(1,3,m2_);
+		Matrix m3(1,3,m3_);
 		Matrix n1(1,3,n1_);
 		Matrix n2(1,3,n2_);
 		Matrix n3(1,3,n3_);
@@ -147,10 +149,11 @@ void esoq2(Matrix& obs, const Matrix& ref, double& loss, Matrix& quaternion) {
 
 		Matrix& m = (imax==0)?(m1):(imax==1)?(m2):(m3); // row
 		Matrix& n = (imax==0)?(n1):(imax==1)?(n2):(n3); // row
-		loss = -(m.dot(e).get(0,0)) / (n.dot(e) + m.dot(v.transpose())).get(0, 0);
+		v.transpose(); // column
+		loss = -(m.dot(e).get(0,0)) / (n.dot(e) + m.dot(v)).get(0, 0);
 		tml = tml + loss;
 		v *= loss;
-		e += v.transpose();
+		e += v;
 	}
 	double q[4];
 	q[3] = -(z.dot(e).get(0,0));
@@ -162,11 +165,14 @@ void esoq2(Matrix& obs, const Matrix& ref, double& loss, Matrix& quaternion) {
 
 
 	if (irot == 0){
-		q = {-q[0], q[3], -q[2], q[1]};
+		double tmp[] = {-q[0], q[3], -q[2], q[1]};
+		memcpy(&q, tmp, sizeof(tmp));
 	} else if (irot == 1) {
-		q = {-q[1], q[2], q[3], -q[0]};
+		double tmp[] = {-q[1], q[2], q[3], -q[0]};
+		memcpy(&q, tmp, sizeof(tmp));
 	} else if (irot == 2) {
-		q = {-q[2], -q[1], q[0], q[3]};
+		double tmp[] = {-q[2], -q[1], q[0], q[3]};
+		memcpy(&q, tmp, sizeof(tmp));
 	}
 
 	quaternion = Matrix(4, 1, q);

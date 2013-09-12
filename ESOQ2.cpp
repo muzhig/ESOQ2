@@ -64,7 +64,7 @@ void esoq2(Matrix& obs, const Matrix& ref, double& loss, Matrix& quaternion) {
 			B(0, 1) - B(1, 0)
 	};
 	B.release(); // free memory
-	Matrix z(1, 3, z_);//row
+	Matrix z(3, 1, z_);//row
 
 	double z12 = z_[0] * z_[0];
 	double z22 = z_[1] * z_[1];
@@ -155,6 +155,7 @@ void esoq2(Matrix& obs, const Matrix& ref, double& loss, Matrix& quaternion) {
 		v *= loss;
 		e += v;
 	}
+	z.transpose();
 	double q[4];
 	q[3] = -(z.dot(e).get(0,0));
 	e *= tml;
